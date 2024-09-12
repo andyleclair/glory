@@ -35,8 +35,11 @@ defmodule GlTest.Window do
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
     IO.puts("OpenGL max vertex attribs: " <> max_attribs)
-    {shader_program, vao1, vao2, rect_vao} = init_opengl()
+    shader_program = init_shaders()
+    colored_triangle_vao = bind_shape(colored_triangle_vertices())
     frame_counter = :counters.new(1, [:atomics])
+
+    :gl.useProgram(shader_program)
 
     send(self(), :update)
     now = System.monotonic_time(:millisecond)
@@ -49,9 +52,7 @@ defmodule GlTest.Window do
        canvas: canvas,
        shader_program: shader_program,
        fps: 0,
-       vao1: vao1,
-       vao2: vao2,
-       rect_vao: rect_vao
+       colored_triangle_vao: colored_triangle_vao
      }}
   end
 
@@ -67,11 +68,13 @@ defmodule GlTest.Window do
                    |> File.read!()
                    |> String.to_charlist()
 
-  def init_opengl() do
+  def init_shaders do
     vertex_shader = :gl.createShader(:gl_const.gl_vertex_shader())
+    dbg(@vertex_source)
     :gl.shaderSource(vertex_shader, [@vertex_source])
     :gl.compileShader(vertex_shader)
 
+    dbg(@fragment_source)
     fragment_shader = :gl.createShader(:gl_const.gl_fragment_shader())
     :gl.shaderSource(fragment_shader, [@fragment_source])
     :gl.compileShader(fragment_shader)
@@ -84,62 +87,21 @@ defmodule GlTest.Window do
     :gl.deleteShader(vertex_shader)
     :gl.deleteShader(fragment_shader)
 
-    vertices = triangle_vertices()
-    vertices_2 = triangle_vertices_2()
+    shader_program
+  end
 
-    [vao1, vao2, rect_vao] = :gl.genVertexArrays(3)
-    [vbo1, vbo2, rect_vbo, ebo] = :gl.genBuffers(4)
+  def bind_shape(vertices) do
+    [vertex_array] = :gl.genVertexArrays(1)
+    [vertex_buffer] = :gl.genBuffers(1)
 
-    for {vertex_array, vertex_buffer, vertices} <- [
-          {vao1, vbo1, vertices},
-          {vao2, vbo2, vertices_2}
-        ] do
-      :gl.bindVertexArray(vertex_array)
+    :gl.bindVertexArray(vertex_array)
 
-      :gl.bindBuffer(:gl_const.gl_array_buffer(), vertex_buffer)
-
-      :gl.bufferData(
-        :gl_const.gl_array_buffer(),
-        byte_size(vertices),
-        vertices,
-        :gl_const.gl_static_draw()
-      )
-
-      :gl.vertexAttribPointer(
-        0,
-        3,
-        :gl_const.gl_float(),
-        :gl_const.gl_false(),
-        3 * byte_size(<<0.0::float-size(32)>>),
-        0
-      )
-
-      :gl.enableVertexAttribArray(0)
-
-      :gl.bindBuffer(:gl_const.gl_array_buffer(), 0)
-
-      :gl.bindVertexArray(0)
-    end
-
-    rect_vertices = rectangle_vertices()
-    rect_indices = rectangle_indices()
-
-    :gl.bindVertexArray(rect_vao)
-    :gl.bindBuffer(:gl_const.gl_array_buffer(), rect_vbo)
+    :gl.bindBuffer(:gl_const.gl_array_buffer(), vertex_buffer)
 
     :gl.bufferData(
       :gl_const.gl_array_buffer(),
-      byte_size(rect_vertices),
-      rect_vertices,
-      :gl_const.gl_static_draw()
-    )
-
-    :gl.bindBuffer(:gl_const.gl_element_array_buffer(), ebo)
-
-    :gl.bufferData(
-      :gl_const.gl_element_array_buffer(),
-      byte_size(rect_indices),
-      rect_indices,
+      byte_size(vertices),
+      vertices,
       :gl_const.gl_static_draw()
     )
 
@@ -148,54 +110,38 @@ defmodule GlTest.Window do
       3,
       :gl_const.gl_float(),
       :gl_const.gl_false(),
-      3 * byte_size(<<0.0::float-size(32)>>),
+      6 * byte_size(<<0.0::float-size(32)>>),
       0
     )
 
     :gl.enableVertexAttribArray(0)
-    {shader_program, vao1, vao2, rect_vao}
+
+    :gl.vertexAttribPointer(
+      1,
+      3,
+      :gl_const.gl_float(),
+      :gl_const.gl_false(),
+      6 * byte_size(<<0.0::float-size(32)>>),
+      3 * byte_size(<<0.0::float-size(32)>>)
+    )
+
+    :gl.enableVertexAttribArray(1)
+
+    vertex_array
   end
 
-  @triangle_vertices [
-                       [0.0, 1.0, 0.0],
-                       [1.0, 0.0, 0.0],
-                       [1.0, 1.0, 0.0]
-                     ]
-                     |> List.flatten()
-                     |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
-  def triangle_vertices do
-    @triangle_vertices
-  end
-
-  @triangle_vertices_2 [
-                         [-0.5, -0.5, 0.0],
-                         [0.5, -0.5, 0.0],
-                         [0.0, 0.5, 0.0]
-                       ]
-                       |> List.flatten()
-                       |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
-  def triangle_vertices_2 do
-    @triangle_vertices_2
-  end
-
-  @rectangle_vertices [
-                        [0.5, 0.5, 0.0],
-                        [0.5, -0.5, 0.0],
-                        [-0.5, -0.5, 0.0],
-                        [-0.5, 0.5, 0.0]
-                      ]
-                      |> List.flatten()
-                      |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
-
-  def rectangle_vertices do
-    @rectangle_vertices
-  end
-
-  @rectangle_indices [[0, 1, 3], [1, 2, 3]]
-                     |> List.flatten()
-                     |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::native-size(32)>> end)
-  def rectangle_indices do
-    @rectangle_indices
+  @colored_triangle_vertices [
+                               # Positions          # Colors
+                               [0.5, -0.5, 0.0, 1.0, 0.0, 0.0],
+                               [-0.5, -0.5, 0.0, 0.0, 1.0, 0.0],
+                               [0.0, 0.5, 0.0, 0.0, 0.0, 1.0]
+                             ]
+                             |> List.flatten()
+                             |> Enum.reduce(<<>>, fn el, acc ->
+                               acc <> <<el::float-native-size(32)>>
+                             end)
+  def colored_triangle_vertices do
+    @colored_triangle_vertices
   end
 
   @impl :wx_object
@@ -231,26 +177,11 @@ defmodule GlTest.Window do
   end
 
   defp draw(%{frame: frame} = state) do
-    :gl.clearColor(0.2, 0.1, 0.3, 1.0)
+    :gl.clearColor(0.2, 0.3, 0.3, 1.0)
     :gl.clear(:gl_const.gl_color_buffer_bit())
 
-    now = System.monotonic_time(:millisecond)
-    green = :math.sin(now) / 2 + 0.5
-
-    location = :gl.getUniformLocation(state.shader_program, ~c"vertexColor")
-    :gl.useProgram(state.shader_program)
-    :gl.uniform4f(location, 0.0, green, 0.0, 1.0)
-
-    :gl.bindVertexArray(state.vao1)
+    :gl.bindVertexArray(state.colored_triangle_vao)
     :gl.drawArrays(:gl_const.gl_triangles(), 0, 3)
-
-    :gl.bindVertexArray(state.vao2)
-    :gl.drawArrays(:gl_const.gl_triangles(), 0, 3)
-
-    :gl.polygonMode(:gl_const.gl_front_and_back(), :gl_const.gl_line())
-    :gl.bindVertexArray(state.rect_vao)
-    :gl.drawElements(:gl_const.gl_triangles(), 6, :gl_const.gl_unsigned_int(), 0)
-    :gl.polygonMode(:gl_const.gl_front_and_back(), :gl_const.gl_fill())
 
     :wxWindow.setLabel(frame, ~c"FPS: #{state.fps}")
 
