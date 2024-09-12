@@ -32,7 +32,9 @@ defmodule GlTest.Window do
     canvas = :wxGLCanvas.new(frame, opts ++ gl_attrib)
     ctx = :wxGLContext.new(canvas)
     :wxGLCanvas.setCurrent(canvas, ctx)
+    max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
+    IO.puts("OpenGL max vertex attribs: " <> max_attribs)
     {shader_program, vao1, vao2, rect_vao} = init_opengl()
     frame_counter = :counters.new(1, [:atomics])
 
@@ -53,22 +55,16 @@ defmodule GlTest.Window do
      }}
   end
 
-  @vertex_source """
-                 #version 330 core
-                 layout (location = 0) in vec3 aPos;
-                 void main() {
-                 gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-                 }\0
-                 """
+  @vertex_path Path.join([__DIR__, "shaders", "vertex.glsl"])
+  @external_resource @vertex_path
+  @vertex_source @vertex_path
+                 |> File.read!()
                  |> String.to_charlist()
 
-  @fragment_source """
-                   #version 330 core
-                   out vec4 FragColor;
-                   void main() {
-                   FragColor = vec4(0.44f, 0.35f, 0.5f, 1.0f);
-                   }\0
-                   """
+  @fragment_path Path.join([__DIR__, "shaders", "fragment.glsl"])
+  @external_resource @fragment_path
+  @fragment_source @fragment_path
+                   |> File.read!()
                    |> String.to_charlist()
 
   def init_opengl() do
@@ -238,7 +234,12 @@ defmodule GlTest.Window do
     :gl.clearColor(0.2, 0.1, 0.3, 1.0)
     :gl.clear(:gl_const.gl_color_buffer_bit())
 
+    now = System.monotonic_time(:millisecond)
+    green = :math.sin(now) / 2 + 0.5
+
+    location = :gl.getUniformLocation(state.shader_program, ~c"vertexColor")
     :gl.useProgram(state.shader_program)
+    :gl.uniform4f(location, 0.0, green, 0.0, 1.0)
 
     :gl.bindVertexArray(state.vao1)
     :gl.drawArrays(:gl_const.gl_triangles(), 0, 3)
