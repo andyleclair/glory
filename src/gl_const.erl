@@ -137,6 +137,18 @@ gl_linear() ->
 gl_nearest() ->
   ?GL_NEAREST.
 
+gl_nearest_mipmap_nearest() ->
+  ?GL_NEAREST_MIPMAP_NEAREST.
+
+gl_nearest_mipmap_linear() ->
+  ?GL_NEAREST_MIPMAP_LINEAR.
+
+gl_linear_mipmap_nearest() ->
+  ?GL_LINEAR_MIPMAP_NEAREST.
+
+gl_linear_mipmap_linear() ->
+  ?GL_LINEAR_MIPMAP_LINEAR.
+
 gl_framebuffer() ->
   ?GL_FRAMEBUFFER.
 

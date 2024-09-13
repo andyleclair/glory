@@ -130,6 +130,54 @@ defmodule GlTest.Window do
     vertex_array
   end
 
+  def bind_texture(coords, filename) do
+    :gl.texParameteri(
+      :gl_const.gl_texture_2d(),
+      :gl_const.gl_texture_wrap_s(),
+      :gl_const.gl_repeat()
+    )
+
+    :gl.texParameteri(
+      :gl_const.gl_texture_2d(),
+      :gl_const.gl_texture_wrap_t(),
+      :gl_const.gl_repeat()
+    )
+
+    :gl.texParameteri(
+      :gl_const.gl_texture_2d(),
+      :gl_const.gl_texture_min_filter(),
+      :gl_const.gl_linear_mipmap_linear()
+    )
+
+    :gl.texParameteri(
+      :gl_const.gl_texture_2d(),
+      :gl_const.gl_texture_mag_filter(),
+      :gl_const.gl_linear()
+    )
+
+    [texture] = :gl.genTextures(1)
+
+    {:ok, bin_data} = File.read(filename)
+    {:ok, img} = Image.from_binary(bin_data)
+    height = Image.height(img)
+    width = Image.width(img)
+    {:ok, data} = Image.write(img, :memory)
+
+    :gl.bindTexture(:gl_const.gl_texture_2d(), texture)
+
+    :gl.texImage2D(
+      :gl_const.gl_texture_2d(),
+      0,
+      :gl_const.gl_rgb(),
+      width,
+      height,
+      0,
+      :gl_const.gl_rgb(),
+      :gl_const.gl_unsigned_byte(),
+      data
+    )
+  end
+
   @colored_triangle_vertices [
                                # Positions          # Colors
                                [0.5, -0.5, 0.0, 1.0, 0.0, 0.0],
@@ -157,7 +205,7 @@ defmodule GlTest.Window do
     @rectangle_vertices
   end
 
-    @impl :wx_object
+  @impl :wx_object
   def handle_event(wx(event: wxClose()), state) do
     {:stop, :normal, state}
   end
