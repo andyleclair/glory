@@ -144,7 +144,20 @@ defmodule GlTest.Window do
     @colored_triangle_vertices
   end
 
-  @impl :wx_object
+  @rectangle_vertices [
+                        [[0.5, 0.5, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0]],
+                        [[0.5, -0.5, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0]],
+                        [[-0.5, -0.5, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0]],
+                        [[-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0]]
+                      ]
+                      |> List.flatten()
+                      |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
+
+  def rectangle_vertices do
+    @rectangle_vertices
+  end
+
+    @impl :wx_object
   def handle_event(wx(event: wxClose()), state) do
     {:stop, :normal, state}
   end
