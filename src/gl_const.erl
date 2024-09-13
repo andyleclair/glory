@@ -98,6 +98,9 @@ gl_luminance() ->
 gl_texture0() ->
   ?GL_TEXTURE0.
 
+gl_texture1() ->
+  ?GL_TEXTURE1.
+
 gl_cull_face() ->
   ?GL_CULL_FACE.
 
@@ -178,5 +181,3 @@ gl_replace() ->
 
 gl_max_vertex_attribs() ->
   ?GL_MAX_VERTEX_ATTRIBS.
-
-

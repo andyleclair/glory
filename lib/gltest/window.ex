@@ -8,6 +8,12 @@ defmodule GlTest.Window do
     {:ok, self()}
   end
 
+  @container_path Path.join([__DIR__, "..", "..", "container.jpg"])
+  @awesome_path Path.join([__DIR__, "..", "..", "awesomeface.png"])
+
+  @vertex_path Path.join([__DIR__, "shaders", "vertex.glsl"])
+  @fragment_path Path.join([__DIR__, "shaders", "fragment.glsl"])
+
   @impl :wx_object
   def init(_) do
     opts = [size: {800, 600}]
@@ -35,11 +41,21 @@ defmodule GlTest.Window do
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
     IO.puts("OpenGL max vertex attribs: " <> max_attribs)
-    shader_program = init_shaders()
-    colored_triangle_vao = bind_shape(colored_triangle_vertices())
+    # Initialize shaders
+    shader_program = GlTest.Shader.init(@vertex_path, @fragment_path)
+
+    IO.puts("Created Shader program")
+    # colored_triangle_vao = bind_shape(colored_triangle_vertices())
     frame_counter = :counters.new(1, [:atomics])
+    rect_vao = bind_rectangle()
+    IO.puts("Bound shape")
+    texture1 = GlTest.Texture.load_texture(@container_path)
+    texture2 = GlTest.Texture.load_texture(@awesome_path)
+    IO.puts("Loaded textures")
 
     :gl.useProgram(shader_program)
+    GlTest.Shader.set(shader_program, ~c"texture1", 0)
+    GlTest.Shader.set(shader_program, ~c"texture2", 1)
 
     send(self(), :update)
     now = System.monotonic_time(:millisecond)
@@ -52,42 +68,10 @@ defmodule GlTest.Window do
        canvas: canvas,
        shader_program: shader_program,
        fps: 0,
-       colored_triangle_vao: colored_triangle_vao
+       rect_vao: rect_vao,
+       texture1: texture1,
+       texture2: texture2
      }}
-  end
-
-  @vertex_path Path.join([__DIR__, "shaders", "vertex.glsl"])
-  @external_resource @vertex_path
-  @vertex_source @vertex_path
-                 |> File.read!()
-                 |> String.to_charlist()
-
-  @fragment_path Path.join([__DIR__, "shaders", "fragment.glsl"])
-  @external_resource @fragment_path
-  @fragment_source @fragment_path
-                   |> File.read!()
-                   |> String.to_charlist()
-
-  def init_shaders do
-    vertex_shader = :gl.createShader(:gl_const.gl_vertex_shader())
-    dbg(@vertex_source)
-    :gl.shaderSource(vertex_shader, [@vertex_source])
-    :gl.compileShader(vertex_shader)
-
-    dbg(@fragment_source)
-    fragment_shader = :gl.createShader(:gl_const.gl_fragment_shader())
-    :gl.shaderSource(fragment_shader, [@fragment_source])
-    :gl.compileShader(fragment_shader)
-
-    shader_program = :gl.createProgram()
-    :gl.attachShader(shader_program, vertex_shader)
-    :gl.attachShader(shader_program, fragment_shader)
-    :gl.linkProgram(shader_program)
-
-    :gl.deleteShader(vertex_shader)
-    :gl.deleteShader(fragment_shader)
-
-    shader_program
   end
 
   def bind_shape(vertices) do
@@ -125,57 +109,74 @@ defmodule GlTest.Window do
       3 * byte_size(<<0.0::float-size(32)>>)
     )
 
-    :gl.enableVertexAttribArray(1)
+    :gl.enableVertexAttribArray(2)
 
     vertex_array
   end
 
-  def bind_texture(coords, filename) do
-    :gl.texParameteri(
-      :gl_const.gl_texture_2d(),
-      :gl_const.gl_texture_wrap_s(),
-      :gl_const.gl_repeat()
+  def bind_rectangle do
+    [rect_vao] = :gl.genVertexArrays(1)
+    [rect_vbo, ebo] = :gl.genBuffers(2)
+
+    rect_vertices = rectangle_vertices()
+    rect_indices = rectangle_indices()
+
+    :gl.bindVertexArray(rect_vao)
+    :gl.bindBuffer(:gl_const.gl_array_buffer(), rect_vbo)
+
+    :gl.bufferData(
+      :gl_const.gl_array_buffer(),
+      byte_size(rect_vertices),
+      rect_vertices,
+      :gl_const.gl_static_draw()
     )
 
-    :gl.texParameteri(
-      :gl_const.gl_texture_2d(),
-      :gl_const.gl_texture_wrap_t(),
-      :gl_const.gl_repeat()
+    :gl.bindBuffer(:gl_const.gl_element_array_buffer(), ebo)
+
+    :gl.bufferData(
+      :gl_const.gl_element_array_buffer(),
+      byte_size(rect_indices),
+      rect_indices,
+      :gl_const.gl_static_draw()
     )
 
-    :gl.texParameteri(
-      :gl_const.gl_texture_2d(),
-      :gl_const.gl_texture_min_filter(),
-      :gl_const.gl_linear_mipmap_linear()
-    )
-
-    :gl.texParameteri(
-      :gl_const.gl_texture_2d(),
-      :gl_const.gl_texture_mag_filter(),
-      :gl_const.gl_linear()
-    )
-
-    [texture] = :gl.genTextures(1)
-
-    {:ok, bin_data} = File.read(filename)
-    {:ok, img} = Image.from_binary(bin_data)
-    height = Image.height(img)
-    width = Image.width(img)
-    {:ok, data} = Image.write(img, :memory)
-
-    :gl.bindTexture(:gl_const.gl_texture_2d(), texture)
-
-    :gl.texImage2D(
-      :gl_const.gl_texture_2d(),
+    :gl.vertexAttribPointer(
       0,
-      :gl_const.gl_rgb(),
-      width,
-      height,
-      0,
-      :gl_const.gl_rgb(),
-      :gl_const.gl_unsigned_byte(),
-      data
+      3,
+      :gl_const.gl_float(),
+      :gl_const.gl_false(),
+      8 * byte_size(<<0.0::float-size(32)>>),
+      0
     )
+
+    :gl.enableVertexAttribArray(0)
+
+    :gl.vertexAttribPointer(
+      1,
+      3,
+      :gl_const.gl_float(),
+      :gl_const.gl_false(),
+      8 * byte_size(<<0.0::float-size(32)>>),
+      3 * byte_size(<<0.0::float-size(32)>>)
+    )
+
+    :gl.enableVertexAttribArray(1)
+
+    :gl.vertexAttribPointer(
+      2,
+      2,
+      :gl_const.gl_float(),
+      :gl_const.gl_false(),
+      8 * byte_size(<<0.0::float-size(32)>>),
+      6 * byte_size(<<0.0::float-size(32)>>)
+    )
+
+    :gl.enableVertexAttribArray(2)
+
+    rect_vao
+  end
+
+  def bind_texture do
   end
 
   @colored_triangle_vertices [
@@ -203,6 +204,13 @@ defmodule GlTest.Window do
 
   def rectangle_vertices do
     @rectangle_vertices
+  end
+
+  @rectangle_indices [[0, 1, 3], [1, 2, 3]]
+                     |> List.flatten()
+                     |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::native-size(32)>> end)
+  def rectangle_indices do
+    @rectangle_indices
   end
 
   @impl :wx_object
@@ -241,8 +249,12 @@ defmodule GlTest.Window do
     :gl.clearColor(0.2, 0.3, 0.3, 1.0)
     :gl.clear(:gl_const.gl_color_buffer_bit())
 
-    :gl.bindVertexArray(state.colored_triangle_vao)
-    :gl.drawArrays(:gl_const.gl_triangles(), 0, 3)
+    :gl.activeTexture(:gl_const.gl_texture0())
+    :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture1)
+    :gl.activeTexture(:gl_const.gl_texture1())
+    :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
+    :gl.bindVertexArray(state.rect_vao)
+    :gl.drawElements(:gl_const.gl_triangles(), 6, :gl_const.gl_unsigned_int(), 0)
 
     :wxWindow.setLabel(frame, ~c"FPS: #{state.fps}")
 
