@@ -22,7 +22,10 @@ defmodule Gltest.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:image, "~> 0.37"}
+      {:image, "~> 0.37"},
+      {:nx, "~> 0.8"},
+      {:exla, "~> 0.2"},
+      {:graphmath, "~> 2.0"}
     ]
   end
 end

@@ -1,5 +1,10 @@
 defmodule GlTest.Window do
+  alias GlTest.Input
+  alias GlTest.Shader
+  alias GlTest.Texture
+
   import WxRecords
+  require Logger
 
   @behaviour :wx_object
 
@@ -38,24 +43,30 @@ defmodule GlTest.Window do
     canvas = :wxGLCanvas.new(frame, opts ++ gl_attrib)
     ctx = :wxGLContext.new(canvas)
     :wxGLCanvas.setCurrent(canvas, ctx)
+    :wxGLCanvas.connect(canvas, :key_down, callback: &Input.handler/2)
+    :wxGLCanvas.connect(canvas, :key_up, callback: &Input.handler/2)
+    :wxGLCanvas.connect(canvas, :motion, callback: &Input.handler/2)
+
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
-    IO.puts("OpenGL max vertex attribs: " <> max_attribs)
+    Logger.debug("OpenGL max vertex attribs: " <> max_attribs)
     # Initialize shaders
-    shader_program = GlTest.Shader.init(@vertex_path, @fragment_path)
+    shader_program = Shader.init(@vertex_path, @fragment_path)
 
-    IO.puts("Created Shader program")
+    Logger.debug("Created Shader program")
     # colored_triangle_vao = bind_shape(colored_triangle_vertices())
     frame_counter = :counters.new(1, [:atomics])
     rect_vao = bind_rectangle()
-    IO.puts("Bound shape")
-    texture1 = GlTest.Texture.load_texture(@container_path)
-    texture2 = GlTest.Texture.load_texture(@awesome_path)
-    IO.puts("Loaded textures")
+    Logger.debug("Bound shape")
+    texture1 = Texture.load_texture(@container_path)
+    texture2 = Texture.load_texture(@awesome_path)
+    Logger.debug("Loaded textures")
 
     :gl.useProgram(shader_program)
-    GlTest.Shader.set(shader_program, ~c"texture1", 0)
-    GlTest.Shader.set(shader_program, ~c"texture2", 1)
+    Shader.set(shader_program, ~c"texture1", 0)
+    Shader.set(shader_program, ~c"texture2", 1)
+
+    scale_transform(shader_program)
 
     send(self(), :update)
     now = System.monotonic_time(:millisecond)
@@ -72,6 +83,17 @@ defmodule GlTest.Window do
        texture1: texture1,
        texture2: texture2
      }}
+  end
+
+  def scale_transform(shader_program) do
+    rotate_z =
+      :math.sin(System.monotonic_time())
+      |> Graphmath.Mat44.make_rotate_z()
+      |> Graphmath.Mat44.scale(0.5)
+
+    translate = Graphmath.Mat44.make_translate(0.5, -0.5, 1.0)
+    data = Graphmath.Mat44.multiply(rotate_z, translate) |> List.wrap()
+    Shader.set(shader_program, ~c"transform", data)
   end
 
   def bind_shape(vertices) do
@@ -215,6 +237,7 @@ defmodule GlTest.Window do
 
   @impl :wx_object
   def handle_event(wx(event: wxClose()), state) do
+    Logger.debug("Window closed")
     {:stop, :normal, state}
   end
 
@@ -230,6 +253,9 @@ defmodule GlTest.Window do
   def handle_info(:update, state) do
     state = render(state)
 
+    send(self(), :update)
+    # Process.send_after(self(), :update, 8)
+
     {:noreply, state}
   end
 
@@ -240,7 +266,6 @@ defmodule GlTest.Window do
       |> draw()
 
     :wxGLCanvas.swapBuffers(canvas)
-    send(self(), :update)
 
     state
   end
@@ -248,6 +273,8 @@ defmodule GlTest.Window do
   defp draw(%{frame: frame} = state) do
     :gl.clearColor(0.2, 0.3, 0.3, 1.0)
     :gl.clear(:gl_const.gl_color_buffer_bit())
+
+    scale_transform(state.shader_program)
 
     :gl.activeTexture(:gl_const.gl_texture0())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture1)

@@ -126,7 +126,7 @@ defmodule GlTest.Shader do
       when is_list(value) and tuple_size(value |> hd()) == 16 do
     if use_shader, do: use_shader(shader)
 
-    :gl.uniformMatrix4fv(:gl.getUniformLocation(shader, name), :gl_const.gl_false(), value)
+    :gl.uniformMatrix4fv(:gl.getUniformLocation(shader, name), 0, value)
 
     shader
   end
