@@ -122,6 +122,14 @@ defmodule GlTest.Shader do
     shader
   end
 
+  def set(shader, name, value, use_shader) when is_tuple(value) and tuple_size(value) == 16 do
+    if use_shader, do: use_shader(shader)
+
+    :gl.uniformMatrix4fv(:gl.getUniformLocation(shader, name), 0, [value])
+
+    shader
+  end
+
   def set(shader, name, value, use_shader)
       when is_list(value) and tuple_size(value |> hd()) == 16 do
     if use_shader, do: use_shader(shader)
@@ -136,17 +144,23 @@ defmodule GlTest.Shader do
     if use_shader, do: use_shader(shader)
 
     :gl.uniform2fv(:gl.getUniformLocation(shader, name), value)
+
+    shader
   end
 
   def set(shader, name, value, use_shader) when is_list(value) and is_integer(value |> hd()) do
     if use_shader, do: use_shader(shader)
 
     :gl.uniform1iv(:gl.getUniformLocation(shader, name), value)
+
+    shader
   end
 
   def set(shader, name, value, use_shader) when is_list(value) and is_float(value |> hd()) do
     if use_shader, do: use_shader(shader)
 
     :gl.uniform1fv(:gl.getUniformLocation(shader, name), value)
+
+    shader
   end
 end

@@ -181,3 +181,6 @@ gl_replace() ->
 
 gl_max_vertex_attribs() ->
   ?GL_MAX_VERTEX_ATTRIBS.
+
+gl_less() ->
+  ?GL_LESS.
