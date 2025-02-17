@@ -9,7 +9,7 @@ defmodule Gltest.Math do
       when is_float(fov) and is_float(aspect) and is_float(near) and is_float(far) do
     fov_rad = radians(fov / 2.0)
     tan_half_fovy = :math.tan(fov_rad)
-    range = near - far
+    range = far - near
 
     {
       1.0 / (aspect * tan_half_fovy),
@@ -22,12 +22,33 @@ defmodule Gltest.Math do
       0.0,
       0.0,
       0.0,
-      (-near - far) / range,
-      2.0 * far * near / range,
+      -((far + near) / range),
+      -(2.0 * far * near / range),
       0.0,
       0.0,
-      1.0,
+      -1.0,
       0.0
+    }
+  end
+
+  def ortho(left, right, bottom, top, near, far) do
+    {
+      2.0 / (right - left),
+      0.0,
+      0.0,
+      -(right + left) / (right - left),
+      0.0,
+      2.0 / (top - bottom),
+      0.0,
+      -(top + bottom) / (top - bottom),
+      0.0,
+      0.0,
+      -2.0 / (far - near),
+      -(far + near) / (far - near),
+      0.0,
+      0.0,
+      0.0,
+      1.0
     }
   end
 

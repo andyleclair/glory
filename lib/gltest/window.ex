@@ -234,13 +234,11 @@ defmodule GlTest.Window do
         Graphmath.Mat44.make_rotate_y(rads)
       )
 
-    view =
-      Graphmath.Mat44.multiply(
-        Graphmath.Mat44.identity(),
-        Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
-      )
+    view = Graphmath.Mat44.make_translate(0.0, 0.0, -2.0)
 
-    projection = Gltest.Math.perspective(45.0, 800.0 / 600.0, 1.0, 1000.0)
+    # Gltest.Math.perspective(45.0, 800.0 / 600.0, 1.0, 1000.0)
+    projection =
+      Gltest.Math.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0)
 
     shader_program
     |> Shader.set(~c"model", model)
@@ -248,7 +246,6 @@ defmodule GlTest.Window do
     |> Shader.set(~c"projection", projection)
 
     :gl.bindVertexArray(state.cube_vao)
-    # :gl.drawElements(:gl_const.gl_triangles(), 36, :gl_const.gl_unsigned_int(), 0)
     :gl.drawArrays(:gl_const.gl_triangles(), 0, 36)
 
     :wxWindow.setLabel(frame, ~c"FPS: #{state.fps}")
