@@ -33,11 +33,13 @@ defmodule GlTest.Window do
       attribList: [
         :wx_const.wx_gl_core_profile(),
         :wx_const.wx_gl_major_version(),
-        3,
+        4,
         :wx_const.wx_gl_minor_version(),
-        3,
+        2,
         :wx_const.wx_gl_doublebuffer(),
-        0
+        0,
+        :wx_const.wx_gl_depth_size(),
+        16
       ]
     ]
 
@@ -112,7 +114,7 @@ defmodule GlTest.Window do
       3,
       :gl_const.gl_float(),
       :gl_const.gl_false(),
-      5 * byte_size(<<0.0::float-size(32)>>),
+      5 * byte_size(<<0.0::float-native-size(32)>>),
       0
     )
 
@@ -123,8 +125,8 @@ defmodule GlTest.Window do
       2,
       :gl_const.gl_float(),
       :gl_const.gl_false(),
-      5 * byte_size(<<0.0::float-size(32)>>),
-      3 * byte_size(<<0.0::float-size(32)>>)
+      5 * byte_size(<<0.0::float-native-size(32)>>),
+      3 * byte_size(<<0.0::float-native-size(32)>>)
     )
 
     :gl.enableVertexAttribArray(1)
@@ -171,7 +173,7 @@ defmodule GlTest.Window do
                    [-0.5, 0.5, -0.5, 0.0, 1.0]
                  ]
                  |> List.flatten()
-                 |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
+                 |> Enum.reduce(<<>>, fn el, acc -> <<acc::binary, el::float-native-size(32)>> end)
 
   def cube_vertices do
     @cube_vertices
@@ -230,15 +232,23 @@ defmodule GlTest.Window do
 
     model =
       Graphmath.Mat44.multiply(
-        Graphmath.Mat44.make_rotate_x(rads),
+        Graphmath.Mat44.multiply(
+          Graphmath.Mat44.identity(),
+          Graphmath.Mat44.make_rotate_x(rads)
+        ),
         Graphmath.Mat44.make_rotate_y(rads)
       )
+      |> Gltest.Math.transpose()
 
-    view = Graphmath.Mat44.make_translate(0.0, 0.0, -2.0)
+    view =
+      Graphmath.Mat44.multiply(
+        Graphmath.Mat44.identity(),
+        Graphmath.Mat44.make_translate(0.0, 0.0, -5.0)
+      )
+      |> Gltest.Math.transpose()
 
-    # Gltest.Math.perspective(45.0, 800.0 / 600.0, 1.0, 1000.0)
     projection =
-      Gltest.Math.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0)
+      Gltest.Math.perspective(90.0, 800.0 / 600.0, 0.1, 100.0)
 
     shader_program
     |> Shader.set(~c"model", model)
