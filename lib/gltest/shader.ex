@@ -125,7 +125,7 @@ defmodule GlTest.Shader do
   def set(shader, name, value, use_shader) when is_tuple(value) and tuple_size(value) == 16 do
     if use_shader, do: use_shader(shader)
 
-    :gl.uniformMatrix4fv(:gl.getUniformLocation(shader, name), 0, [value])
+    :gl.uniformMatrix4fv(:gl.getUniformLocation(shader, name), :gl_const.gl_false(), [value])
 
     shader
   end

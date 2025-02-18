@@ -5,6 +5,7 @@ defmodule GlTest.Window do
 
   import WxRecords
   import Bitwise
+  import Gltest.Math
   require Logger
 
   @behaviour :wx_object
@@ -37,7 +38,6 @@ defmodule GlTest.Window do
         :wx_const.wx_gl_minor_version(),
         2,
         :wx_const.wx_gl_doublebuffer(),
-        0,
         :wx_const.wx_gl_depth_size(),
         16
       ]
@@ -228,27 +228,19 @@ defmodule GlTest.Window do
     :gl.activeTexture(:gl_const.gl_texture1())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
 
-    rads = :math.sin(Gltest.Math.radians((now() - state.start_time) / 1_000)) * 90
+    rads = radians(now() - state.start_time)
 
-    model =
-      Graphmath.Mat44.multiply(
-        Graphmath.Mat44.multiply(
-          Graphmath.Mat44.identity(),
-          Graphmath.Mat44.make_rotate_x(rads)
-        ),
-        Graphmath.Mat44.make_rotate_y(rads)
-      )
-      |> Gltest.Math.transpose()
+    model = :e3d_mat.rotate(rads, {1.0, 0.0, 0.5}) |> :e3d_mat.expand()
 
-    view =
-      Graphmath.Mat44.multiply(
-        Graphmath.Mat44.identity(),
-        Graphmath.Mat44.make_translate(0.0, 0.0, -5.0)
-      )
-      |> Gltest.Math.transpose()
+    view = :e3d_mat.translate({0.0, 0.0, -3.0}) |> :e3d_mat.expand()
 
-    projection =
-      Gltest.Math.perspective(90.0, 800.0 / 600.0, 0.1, 100.0)
+    dbg(model)
+    dbg(view)
+
+    {:e3d_transf, projection, _inv} = :e3d_transform.perspective(45.0, 1.0, 100.0)
+    # {:e3d_transf, projection, _inv} = :e3d_transform.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 1000.0)
+    dbg(projection)
+    projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
 
     shader_program
     |> Shader.set(~c"model", model)
