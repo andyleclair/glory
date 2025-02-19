@@ -228,19 +228,23 @@ defmodule GlTest.Window do
     :gl.activeTexture(:gl_const.gl_texture1())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
 
-    rads = radians(now() - state.start_time)
+    degrees = (state.start_time - now()) * 0.1
+    rads = radians(degrees)
 
-    model = :e3d_mat.rotate(rads, {1.0, 0.0, 0.5}) |> :e3d_mat.expand()
+    model =
+      Graphmath.Mat44.multiply(
+        Graphmath.Mat44.make_rotate_x(rads),
+        Graphmath.Mat44.make_rotate_z(rads)
+      )
+
+    # model = :e3d_mat.rotate(degrees, {1.0, 0.0, 1.0}) |> :e3d_mat.expand()
 
     view = :e3d_mat.translate({0.0, 0.0, -3.0}) |> :e3d_mat.expand()
-
-    dbg(model)
-    dbg(view)
-
-    {:e3d_transf, projection, _inv} = :e3d_transform.perspective(45.0, 1.0, 100.0)
-    # {:e3d_transf, projection, _inv} = :e3d_transform.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 1000.0)
-    dbg(projection)
+    # view = Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
     projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
+
+    # {:e3d_transf, projection, _inv} = :e3d_transform.perspective(45.0, 800.0 / 600.0, 100.0)
+    # {:e3d_transf, projection, _inv} = :e3d_transform.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 1000.0)
 
     shader_program
     |> Shader.set(~c"model", model)

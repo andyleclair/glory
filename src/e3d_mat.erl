@@ -152,7 +152,7 @@ scale(Sx, Sy, Sz) ->
 
 -spec rotate(Angle :: number(), Vector :: e3d_vector()) -> compact_matrix().
 rotate(A0, {X, Y, Z}) when is_float(X), is_float(Y), is_float(Z) ->
-  A = A0 * (math:pi() / 180),
+  A = A0 * (math:pi() / 180.0),
   CosA = math:cos(A),
   SinA = math:sin(A),
   XSinA = X * SinA,

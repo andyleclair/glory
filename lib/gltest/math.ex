@@ -1,60 +1,60 @@
 defmodule Gltest.Math do
-  def radians(degrees) when is_float(degrees) or is_integer(degrees) do
-    degrees * :math.pi() / 180.0
+  def radians(degrees) when is_number(degrees) do
+    degrees * (:math.pi() / 180.0)
   end
 
-  # @spec perspective(fov :: float(), aspect :: float(), near :: float(), far :: float()) ::
-  #         Graphmath.Mat44.mat44()
-  # def perspective(fov, aspect, near, far)
-  #     when is_float(fov) and is_float(aspect) and is_float(near) and is_float(far) do
-  #   fov_rad = radians(fov / 2.0)
-  #   tan_half_fovy = :math.tan(fov_rad)
-  #   range = near - far
+  @spec perspective(fov :: float(), aspect :: float(), near :: float(), far :: float()) ::
+          Graphmath.Mat44.mat44()
+  def perspective(fov, aspect, near, far)
+      when is_float(fov) and is_float(aspect) and is_float(near) and is_float(far) do
+    fov_rad = radians(fov * 0.5)
+    tan_half_fovy = :math.tan(fov_rad)
+    range = near - far
 
-  #   # Written out like this so it's easier to think about
-  #   # Remember, OpenGL matrices are column-major
-  #   # col 0{ 1.0 / (aspect * tan_half_fovy), 0.0, 0.0, 0.0,
-  #   # col 1  0.0, 1.0 / tan_half_fovy, 0.0, 0.0,
-  #   # col 2  0.0, 0.0, -((far + near) / range), -1.0,
-  #   # col 3  0.0, 0.0, -(2.0 * far * near / range), 0.0
-  #   # }
-
-  #   {
-  #     1.0 / (aspect * tan_half_fovy),
-  #     0.0,
-  #     0.0,
-  #     0.0,
-  #     0.0,
-  #     1.0 / tan_half_fovy,
-  #     0.0,
-  #     0.0,
-  #     0.0,
-  #     0.0,
-  #     (far + near) / range,
-  #     -1.0,
-  #     0.0,
-  #     0.0,
-  #     2.0 * far * near / range,
-  #     0.0
-  #   }
-  # end
-
-  def perspective(fov, aspect, near, far) do
-    f = 1.0 / :math.tan(fov / 2)
-    nf = 1 / (near - far)
+    # Written out like this so it's easier to think about
+    # Remember, OpenGL matrices are column-major
+    # col 0{ 1.0 / (aspect * tan_half_fovy), 0.0, 0.0, 0.0,
+    # col 1  0.0, 1.0 / tan_half_fovy, 0.0, 0.0,
+    # col 2  0.0, 0.0, -((far + near) / range), -1.0,
+    # col 3  0.0, 0.0, -(2.0 * far * near / range), 0.0
+    # }
 
     {
-      {f / aspect, 0.0, 0.0, 0.0},
-      {0.0, f, 0.0, 0.0},
-      {0.0, 0.0, (far + near) * nf, -1.0},
-      {0.0, 0.0, 2 * far * near * nf, 0.0}
+      1.0 / (aspect * tan_half_fovy),
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0 / tan_half_fovy,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      (far + near) / range,
+      -1.0,
+      0.0,
+      0.0,
+      2.0 * far * near / range,
+      0.0
     }
-    |> flatten()
   end
 
-  def flatten({{a0, a1, a2, a3}, {b0, b1, b2, b3}, {c0, c1, c2, c3}, {d0, d1, d2, d3}}) do
-    {a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3}
-  end
+  # def perspective(fov, aspect, near, far) do
+  #  f = 1.0 / :math.tan(fov / 2)
+  #  nf = 1 / (near - far)
+
+  #  {
+  #    {f / aspect, 0.0, 0.0, 0.0},
+  #    {0.0, f, 0.0, 0.0},
+  #    {0.0, 0.0, (far + near) * nf, -1.0},
+  #    {0.0, 0.0, 2 * far * near * nf, 0.0}
+  #  }
+  #  |> flatten()
+  # end
+
+  # def flatten({{a0, a1, a2, a3}, {b0, b1, b2, b3}, {c0, c1, c2, c3}, {d0, d1, d2, d3}}) do
+  #  {a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3}
+  # end
 
   def ortho(left, right, bottom, top, near, far) do
     {
