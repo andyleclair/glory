@@ -53,32 +53,31 @@ defmodule GlTest.Texture do
       end
 
     if String.contains?(image_path, ".png") do
-    :gl.texImage2D(
-      :gl_const.gl_texture_2d(),
-      0,
-      :gl_const.gl_rgba(),
-      width,
-      height,
-      0,
-      :gl_const.gl_rgba(),
-      :gl_const.gl_unsigned_byte(),
-      data
-    )
-
+      :gl.texImage2D(
+        :gl_const.gl_texture_2d(),
+        0,
+        :gl_const.gl_rgba(),
+        width,
+        height,
+        0,
+        :gl_const.gl_rgba(),
+        :gl_const.gl_unsigned_byte(),
+        data
+      )
     else
-    :gl.texImage2D(
-      :gl_const.gl_texture_2d(),
-      0,
-      :gl_const.gl_rgb(),
-      width,
-      height,
-      0,
-      :gl_const.gl_rgb(),
-      :gl_const.gl_unsigned_byte(),
-      data
-    )
-
+      :gl.texImage2D(
+        :gl_const.gl_texture_2d(),
+        0,
+        :gl_const.gl_rgb(),
+        width,
+        height,
+        0,
+        :gl_const.gl_rgb(),
+        :gl_const.gl_unsigned_byte(),
+        data
+      )
     end
+
     :gl.generateMipmap(:gl_const.gl_texture_2d())
     texture
   end

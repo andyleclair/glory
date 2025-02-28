@@ -23,8 +23,6 @@ defmodule Gltest.MixProject do
   defp deps do
     [
       {:image, "~> 0.37"},
-      {:nx, "~> 0.8"},
-      {:exla, "~> 0.2"},
       {:graphmath, "~> 2.0"}
     ]
   end

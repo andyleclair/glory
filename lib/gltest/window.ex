@@ -4,6 +4,8 @@ defmodule GlTest.Window do
   alias GlTest.Texture
 
   import WxRecords
+  import Bitwise
+  import Gltest.Math
   require Logger
 
   @behaviour :wx_object
@@ -32,11 +34,12 @@ defmodule GlTest.Window do
       attribList: [
         :wx_const.wx_gl_core_profile(),
         :wx_const.wx_gl_major_version(),
-        3,
+        4,
         :wx_const.wx_gl_minor_version(),
-        3,
+        2,
         :wx_const.wx_gl_doublebuffer(),
-        0
+        :wx_const.wx_gl_depth_size(),
+        16
       ]
     ]
 
@@ -50,13 +53,13 @@ defmodule GlTest.Window do
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
     Logger.debug("OpenGL max vertex attribs: " <> max_attribs)
+
     # Initialize shaders
     shader_program = Shader.init(@vertex_path, @fragment_path)
 
     Logger.debug("Created Shader program")
-    # colored_triangle_vao = bind_shape(colored_triangle_vertices())
-    frame_counter = :counters.new(1, [:atomics])
-    rect_vao = bind_rectangle()
+    frame_counter = :counters.new(2, [:atomics])
+    cube_vao = bind_shape(cube_vertices())
     Logger.debug("Bound shape")
     texture1 = Texture.load_texture(@container_path)
     texture2 = Texture.load_texture(@awesome_path)
@@ -66,34 +69,45 @@ defmodule GlTest.Window do
     Shader.set(shader_program, ~c"texture1", 0)
     Shader.set(shader_program, ~c"texture2", 1)
 
-    scale_transform(shader_program)
-
     send(self(), :update)
-    now = System.monotonic_time(:millisecond)
+    now = now()
+
+    Logger.debug("Starting now: #{now}")
 
     {frame,
      %{
-       last_time: now,
+       start_time: now,
+       last_frame_time: now,
+       last_sample_time: now,
        frame: frame,
        frame_counter: frame_counter,
        canvas: canvas,
        shader_program: shader_program,
        fps: 0,
-       rect_vao: rect_vao,
+       cube_vao: cube_vao,
        texture1: texture1,
-       texture2: texture2
+       texture2: texture2,
+       cubes: cube_positions()
      }}
   end
 
-  def scale_transform(shader_program) do
-    rotate_z =
-      :math.sin(System.monotonic_time())
-      |> Graphmath.Mat44.make_rotate_z()
-      |> Graphmath.Mat44.scale(0.5)
+  defp now do
+    System.monotonic_time(:millisecond)
+  end
 
-    translate = Graphmath.Mat44.make_translate(0.5, -0.5, 1.0)
-    data = Graphmath.Mat44.multiply(rotate_z, translate) |> List.wrap()
-    Shader.set(shader_program, ~c"transform", data)
+  defp cube_positions do
+    [
+      {0.0, 0.0, 0.0},
+      {2.0, 5.0, -15.0},
+      {-1.5, -2.2, -2.5},
+      {-3.8, -2.0, -12.3},
+      {2.4, -0.4, -3.5},
+      {-1.7, 3.0, -7.5},
+      {1.3, -2.0, -2.5},
+      {1.5, 2.0, -2.5},
+      {1.5, 0.2, -1.5},
+      {-1.3, 1.0, -1.5}
+    ]
   end
 
   def bind_shape(vertices) do
@@ -116,7 +130,7 @@ defmodule GlTest.Window do
       3,
       :gl_const.gl_float(),
       :gl_const.gl_false(),
-      6 * byte_size(<<0.0::float-size(32)>>),
+      5 * byte_size(<<0.0::float-native-size(32)>>),
       0
     )
 
@@ -124,125 +138,74 @@ defmodule GlTest.Window do
 
     :gl.vertexAttribPointer(
       1,
-      3,
+      2,
       :gl_const.gl_float(),
       :gl_const.gl_false(),
-      6 * byte_size(<<0.0::float-size(32)>>),
-      3 * byte_size(<<0.0::float-size(32)>>)
-    )
-
-    :gl.enableVertexAttribArray(2)
-
-    vertex_array
-  end
-
-  def bind_rectangle do
-    [rect_vao] = :gl.genVertexArrays(1)
-    [rect_vbo, ebo] = :gl.genBuffers(2)
-
-    rect_vertices = rectangle_vertices()
-    rect_indices = rectangle_indices()
-
-    :gl.bindVertexArray(rect_vao)
-    :gl.bindBuffer(:gl_const.gl_array_buffer(), rect_vbo)
-
-    :gl.bufferData(
-      :gl_const.gl_array_buffer(),
-      byte_size(rect_vertices),
-      rect_vertices,
-      :gl_const.gl_static_draw()
-    )
-
-    :gl.bindBuffer(:gl_const.gl_element_array_buffer(), ebo)
-
-    :gl.bufferData(
-      :gl_const.gl_element_array_buffer(),
-      byte_size(rect_indices),
-      rect_indices,
-      :gl_const.gl_static_draw()
-    )
-
-    :gl.vertexAttribPointer(
-      0,
-      3,
-      :gl_const.gl_float(),
-      :gl_const.gl_false(),
-      8 * byte_size(<<0.0::float-size(32)>>),
-      0
-    )
-
-    :gl.enableVertexAttribArray(0)
-
-    :gl.vertexAttribPointer(
-      1,
-      3,
-      :gl_const.gl_float(),
-      :gl_const.gl_false(),
-      8 * byte_size(<<0.0::float-size(32)>>),
-      3 * byte_size(<<0.0::float-size(32)>>)
+      5 * byte_size(<<0.0::float-native-size(32)>>),
+      3 * byte_size(<<0.0::float-native-size(32)>>)
     )
 
     :gl.enableVertexAttribArray(1)
 
-    :gl.vertexAttribPointer(
-      2,
-      2,
-      :gl_const.gl_float(),
-      :gl_const.gl_false(),
-      8 * byte_size(<<0.0::float-size(32)>>),
-      6 * byte_size(<<0.0::float-size(32)>>)
-    )
-
-    :gl.enableVertexAttribArray(2)
-
-    rect_vao
+    vertex_array
   end
 
-  def bind_texture do
-  end
+  @cube_vertices [
+                   [-0.5, -0.5, -0.5, 0.0, 0.0],
+                   [0.5, -0.5, -0.5, 1.0, 0.0],
+                   [0.5, 0.5, -0.5, 1.0, 1.0],
+                   [0.5, 0.5, -0.5, 1.0, 1.0],
+                   [-0.5, 0.5, -0.5, 0.0, 1.0],
+                   [-0.5, -0.5, -0.5, 0.0, 0.0],
+                   [-0.5, -0.5, 0.5, 0.0, 0.0],
+                   [0.5, -0.5, 0.5, 1.0, 0.0],
+                   [0.5, 0.5, 0.5, 1.0, 1.0],
+                   [0.5, 0.5, 0.5, 1.0, 1.0],
+                   [-0.5, 0.5, 0.5, 0.0, 1.0],
+                   [-0.5, -0.5, 0.5, 0.0, 0.0],
+                   [-0.5, 0.5, 0.5, 1.0, 0.0],
+                   [-0.5, 0.5, -0.5, 1.0, 1.0],
+                   [-0.5, -0.5, -0.5, 0.0, 1.0],
+                   [-0.5, -0.5, -0.5, 0.0, 1.0],
+                   [-0.5, -0.5, 0.5, 0.0, 0.0],
+                   [-0.5, 0.5, 0.5, 1.0, 0.0],
+                   [0.5, 0.5, 0.5, 1.0, 0.0],
+                   [0.5, 0.5, -0.5, 1.0, 1.0],
+                   [0.5, -0.5, -0.5, 0.0, 1.0],
+                   [0.5, -0.5, -0.5, 0.0, 1.0],
+                   [0.5, -0.5, 0.5, 0.0, 0.0],
+                   [0.5, 0.5, 0.5, 1.0, 0.0],
+                   [-0.5, -0.5, -0.5, 0.0, 1.0],
+                   [0.5, -0.5, -0.5, 1.0, 1.0],
+                   [0.5, -0.5, 0.5, 1.0, 0.0],
+                   [0.5, -0.5, 0.5, 1.0, 0.0],
+                   [-0.5, -0.5, 0.5, 0.0, 0.0],
+                   [-0.5, -0.5, -0.5, 0.0, 1.0],
+                   [-0.5, 0.5, -0.5, 0.0, 1.0],
+                   [0.5, 0.5, -0.5, 1.0, 1.0],
+                   [0.5, 0.5, 0.5, 1.0, 0.0],
+                   [0.5, 0.5, 0.5, 1.0, 0.0],
+                   [-0.5, 0.5, 0.5, 0.0, 0.0],
+                   [-0.5, 0.5, -0.5, 0.0, 1.0]
+                 ]
+                 |> List.flatten()
+                 |> Enum.reduce(<<>>, fn el, acc -> <<acc::binary, el::float-native-size(32)>> end)
 
-  @colored_triangle_vertices [
-                               # Positions          # Colors
-                               [0.5, -0.5, 0.0, 1.0, 0.0, 0.0],
-                               [-0.5, -0.5, 0.0, 0.0, 1.0, 0.0],
-                               [0.0, 0.5, 0.0, 0.0, 0.0, 1.0]
-                             ]
-                             |> List.flatten()
-                             |> Enum.reduce(<<>>, fn el, acc ->
-                               acc <> <<el::float-native-size(32)>>
-                             end)
-  def colored_triangle_vertices do
-    @colored_triangle_vertices
-  end
-
-  @rectangle_vertices [
-                        [[0.5, 0.5, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0]],
-                        [[0.5, -0.5, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0]],
-                        [[-0.5, -0.5, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0]],
-                        [[-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0]]
-                      ]
-                      |> List.flatten()
-                      |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::float-native-size(32)>> end)
-
-  def rectangle_vertices do
-    @rectangle_vertices
-  end
-
-  @rectangle_indices [[0, 1, 3], [1, 2, 3]]
-                     |> List.flatten()
-                     |> Enum.reduce(<<>>, fn el, acc -> acc <> <<el::native-size(32)>> end)
-  def rectangle_indices do
-    @rectangle_indices
+  def cube_vertices do
+    @cube_vertices
   end
 
   @impl :wx_object
   def handle_event(wx(event: wxClose()), state) do
     Logger.debug("Window closed")
+    System.stop()
+    Logger.debug("System stopped")
     {:stop, :normal, state}
   end
 
   @impl :wx_object
   def handle_info(:stop, %{canvas: canvas, fps_counter_label: fps_counter_label} = state) do
+    Logger.debug("stop called")
     :wxGLCanvas.destroy(canvas)
     :wxStaticText.destroy(fps_counter_label)
 
@@ -251,10 +214,9 @@ defmodule GlTest.Window do
 
   @impl :wx_object
   def handle_info(:update, state) do
+    # send(self(), :update)
+    Process.send_after(self(), :update, 10)
     state = render(state)
-
-    send(self(), :update)
-    # Process.send_after(self(), :update, 8)
 
     {:noreply, state}
   end
@@ -270,36 +232,80 @@ defmodule GlTest.Window do
     state
   end
 
-  defp draw(%{frame: frame} = state) do
-    :gl.clearColor(0.2, 0.3, 0.3, 1.0)
-    :gl.clear(:gl_const.gl_color_buffer_bit())
+  defp draw(%{frame: frame, shader_program: shader_program, cubes: cubes} = state) do
+    :gl.enable(:gl_const.gl_depth_test())
+    :gl.depthFunc(:gl_const.gl_less())
 
-    scale_transform(state.shader_program)
+    :gl.clearColor(0.2, 0.3, 0.3, 1.0)
+    :gl.clear(:gl_const.gl_color_buffer_bit() ||| :gl_const.gl_depth_buffer_bit())
 
     :gl.activeTexture(:gl_const.gl_texture0())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture1)
     :gl.activeTexture(:gl_const.gl_texture1())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
-    :gl.bindVertexArray(state.rect_vao)
-    :gl.drawElements(:gl_const.gl_triangles(), 6, :gl_const.gl_unsigned_int(), 0)
+
+    view = Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
+    projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
+
+    shader_program
+    |> Shader.set(~c"view", view)
+    |> Shader.set(~c"projection", projection)
+
+    #    glBindVertexArray(VAO);
+    # for(unsigned int i = 0; i < 10; i++)
+    # {
+    #    glm::mat4 model = glm::mat4(1.0f);
+    #    model = glm::translate(model, cubePositions[i]);
+    #    float angle = 20.0f * i; 
+    #    model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+    #    ourShader.setMat4("model", model);
+    #
+    #    glDrawArrays(GL_TRIANGLES, 0, 36);
+    # }
+    cubes
+    |> Enum.with_index()
+    |> Enum.each(fn {{x, y, z}, i} ->
+      degrees = (state.start_time - now()) * 0.1 * (i + 1)
+      rads = radians(degrees)
+
+      model =
+        Graphmath.Mat44.make_translate(x, y, z)
+        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_x(rads))
+        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_z(rads))
+
+      shader_program
+      |> Shader.set(~c"model", model)
+
+      :gl.bindVertexArray(state.cube_vao)
+      :gl.drawArrays(:gl_const.gl_triangles(), 0, 36)
+    end)
 
     :wxWindow.setLabel(frame, ~c"FPS: #{state.fps}")
 
     state
   end
 
-  def update_frame_counter(%{last_time: last_time, frame_counter: frame_counter} = state) do
-    now = System.monotonic_time(:millisecond)
-    elapsed = now - last_time
+  def update_frame_counter(
+        %{
+          last_frame_time: last_frame_time,
+          last_sample_time: last_sample_time,
+          frame_counter: frame_counter
+        } = state
+      ) do
+    now = now()
+    since_last_sample = now - last_sample_time
+    _since_last_frame = now - last_frame_time
+    # Increment global frame counter, index 2
+    :counters.add(frame_counter, 2, 1)
 
-    if elapsed > 100 do
+    if since_last_sample > 50 do
       frames = :counters.get(frame_counter, 1)
-      fps = (frames / elapsed * 1000) |> round()
+      fps = (frames / since_last_sample * 1_000) |> round()
       :counters.put(frame_counter, 1, 0)
-      Map.merge(state, %{fps: fps, last_time: now})
+      Map.merge(state, %{fps: fps, last_sample_time: now, last_frame_time: now})
     else
       :counters.add(frame_counter, 1, 1)
-      state
+      Map.put(state, :last_frame_time, now)
     end
   end
 
