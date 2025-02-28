@@ -86,12 +86,28 @@ defmodule GlTest.Window do
        fps: 0,
        cube_vao: cube_vao,
        texture1: texture1,
-       texture2: texture2
+       texture2: texture2,
+       cubes: cube_positions()
      }}
   end
 
   defp now do
     System.monotonic_time(:millisecond)
+  end
+
+  defp cube_positions do
+    [
+      {0.0, 0.0, 0.0},
+      {2.0, 5.0, -15.0},
+      {-1.5, -2.2, -2.5},
+      {-3.8, -2.0, -12.3},
+      {2.4, -0.4, -3.5},
+      {-1.7, 3.0, -7.5},
+      {1.3, -2.0, -2.5},
+      {1.5, 2.0, -2.5},
+      {1.5, 0.2, -1.5},
+      {-1.3, 1.0, -1.5}
+    ]
   end
 
   def bind_shape(vertices) do
@@ -216,7 +232,7 @@ defmodule GlTest.Window do
     state
   end
 
-  defp draw(%{frame: frame, shader_program: shader_program} = state) do
+  defp draw(%{frame: frame, shader_program: shader_program, cubes: cubes} = state) do
     :gl.enable(:gl_const.gl_depth_test())
     :gl.depthFunc(:gl_const.gl_less())
 
@@ -228,31 +244,41 @@ defmodule GlTest.Window do
     :gl.activeTexture(:gl_const.gl_texture1())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
 
-    degrees = (state.start_time - now()) * 0.1
-    rads = radians(degrees)
-
-    model =
-      Graphmath.Mat44.multiply(
-        Graphmath.Mat44.make_rotate_x(rads),
-        Graphmath.Mat44.make_rotate_z(rads)
-      )
-
-    # model = :e3d_mat.rotate(degrees, {1.0, 0.0, 1.0}) |> :e3d_mat.expand()
-
-    view = :e3d_mat.translate({0.0, 0.0, -3.0}) |> :e3d_mat.expand()
-    # view = Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
+    view = Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
     projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
 
-    # {:e3d_transf, projection, _inv} = :e3d_transform.perspective(45.0, 800.0 / 600.0, 100.0)
-    # {:e3d_transf, projection, _inv} = :e3d_transform.ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 1000.0)
-
     shader_program
-    |> Shader.set(~c"model", model)
     |> Shader.set(~c"view", view)
     |> Shader.set(~c"projection", projection)
 
-    :gl.bindVertexArray(state.cube_vao)
-    :gl.drawArrays(:gl_const.gl_triangles(), 0, 36)
+    #    glBindVertexArray(VAO);
+    # for(unsigned int i = 0; i < 10; i++)
+    # {
+    #    glm::mat4 model = glm::mat4(1.0f);
+    #    model = glm::translate(model, cubePositions[i]);
+    #    float angle = 20.0f * i; 
+    #    model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+    #    ourShader.setMat4("model", model);
+    #
+    #    glDrawArrays(GL_TRIANGLES, 0, 36);
+    # }
+    cubes
+    |> Enum.with_index()
+    |> Enum.each(fn {{x, y, z}, i} ->
+      degrees = (state.start_time - now()) * 0.1 * (i + 1)
+      rads = radians(degrees)
+
+      model =
+        Graphmath.Mat44.make_translate(x, y, z)
+        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_x(rads))
+        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_z(rads))
+
+      shader_program
+      |> Shader.set(~c"model", model)
+
+      :gl.bindVertexArray(state.cube_vao)
+      :gl.drawArrays(:gl_const.gl_triangles(), 0, 36)
+    end)
 
     :wxWindow.setLabel(frame, ~c"FPS: #{state.fps}")
 
