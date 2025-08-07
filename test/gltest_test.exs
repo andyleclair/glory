@@ -1,8 +1,8 @@
-defmodule GltestTest do
+defmodule GloryTest do
   use ExUnit.Case
-  doctest Gltest
+  doctest Glory
 
   test "greets the world" do
-    assert Gltest.hello() == :world
+    assert Glory.hello() == :world
   end
 end

@@ -1,4 +1,4 @@
-defmodule GlTest.Texture do
+defmodule Glory.Texture do
   alias Vix.Vips.Image
 
   def load_texture(image_path) do

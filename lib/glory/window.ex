@@ -1,11 +1,11 @@
-defmodule GlTest.Window do
-  alias GlTest.Input
-  alias GlTest.Shader
-  alias GlTest.Texture
+defmodule Glory.Window do
+  alias Glory.Input
+  alias Glory.Shader
+  alias Glory.Texture
 
   import WxRecords
   import Bitwise
-  import Gltest.Math
+  import Glory.Math
   require Logger
 
   @behaviour :wx_object

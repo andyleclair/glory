@@ -1,4 +1,4 @@
-defmodule GlTest.Input do
+defmodule Glory.Input do
   require Logger
   import WxRecords
 

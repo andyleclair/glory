@@ -1,4 +1,4 @@
-defmodule GlTest.Shader do
+defmodule Glory.Shader do
   require Logger
 
   @type t :: integer()

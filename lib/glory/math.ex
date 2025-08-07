@@ -1,4 +1,4 @@
-defmodule Gltest.Math do
+defmodule Glory.Math do
   def radians(degrees) when is_number(degrees) do
     degrees * (:math.pi() / 180.0)
   end

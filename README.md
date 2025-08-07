@@ -1,4 +1,4 @@
-# Gltest
+# Glory
 
 Experiments with OpenGL in Elixir
 

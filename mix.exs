@@ -1,9 +1,9 @@
-defmodule Gltest.MixProject do
+defmodule Glory.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :gltest,
+      app: :glory,
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule Gltest.MixProject do
   def application do
     [
       extra_applications: [:logger, :wx],
-      mod: {Gltest.Application, []}
+      mod: {Glory.Application, []}
     ]
   end
 

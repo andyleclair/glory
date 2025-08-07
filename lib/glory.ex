@@ -1,6 +1,6 @@
-defmodule Gltest do
+defmodule Glory do
   @moduledoc """
-  Documentation for `Gltest`.
+  Documentation for `Glory`.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule Gltest do
 
   ## Examples
 
-      iex> Gltest.hello()
+      iex> Glory.hello()
       :world
 
   """
