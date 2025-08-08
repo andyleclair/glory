@@ -1,10 +1,13 @@
 defmodule Glory.Math do
+  alias Graphmath.Vec3
+  alias Graphmath.Mat44
+
   def radians(degrees) when is_number(degrees) do
     degrees * (:math.pi() / 180.0)
   end
 
   @spec perspective(fov :: float(), aspect :: float(), near :: float(), far :: float()) ::
-          Graphmath.Mat44.mat44()
+          Mat44.mat44()
   def perspective(fov, aspect, near, far)
       when is_float(fov) and is_float(aspect) and is_float(near) and is_float(far) do
     fov_rad = radians(fov * 0.5)
@@ -75,6 +78,19 @@ defmodule Glory.Math do
       -(far + near) / (far - near),
       1.0
     }
+  end
+
+  def look_at({px, py, pz} = position, target, up) do
+    {dx, dy, dz} = camera_direction = position |> Vec3.subtract(target) |> Vec3.normalize()
+    {rx, ry, rz} = camera_right = up |> Vec3.cross(camera_direction) |> Vec3.normalize()
+    {ux, uy, uz} = Vec3.cross(camera_direction, camera_right)
+
+    space = {rx, ux, dx, 0.0, ry, uy, dy, 0.0, rz, uz, dz, 0.0, 0.0, 0.0, 0.0, 1.0}
+
+    pos_translator =
+      {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -px, -py, -pz, 1.0}
+
+    Mat44.multiply(space, pos_translator)
   end
 
   def transpose({a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, d3, d4}) do

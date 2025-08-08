@@ -23,7 +23,8 @@ defmodule Glory.MixProject do
   defp deps do
     [
       {:image, "~> 0.37"},
-      {:graphmath, "~> 2.0"}
+      {:graphmath, "~> 2.0"},
+      {:typedstruct, "~> 0.5"}
     ]
   end
 end

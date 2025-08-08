@@ -1,7 +1,9 @@
 defmodule Glory.Window do
+  alias Glory.Camera
   alias Glory.Input
   alias Glory.Shader
   alias Glory.Texture
+  alias Graphmath.Mat44
 
   import WxRecords
   import Bitwise
@@ -11,7 +13,7 @@ defmodule Glory.Window do
   @behaviour :wx_object
 
   def start_link(_) do
-    :wx_object.start_link(__MODULE__, [], [])
+    :wx_object.start_link({:local, __MODULE__}, __MODULE__, [], [])
     {:ok, self()}
   end
 
@@ -21,9 +23,12 @@ defmodule Glory.Window do
   @vertex_path Path.join([__DIR__, "shaders", "vertex.glsl"])
   @fragment_path Path.join([__DIR__, "shaders", "fragment.glsl"])
 
+  @width 1200
+  @height 800
+
   @impl :wx_object
   def init(_) do
-    opts = [size: {800, 600}]
+    opts = [size: {@width, @height}]
     wx = :wx.new()
     frame = :wxFrame.new(wx, :wx_const.wx_id_any(), ~c"Hello", opts)
 
@@ -46,9 +51,11 @@ defmodule Glory.Window do
     canvas = :wxGLCanvas.new(frame, opts ++ gl_attrib)
     ctx = :wxGLContext.new(canvas)
     :wxGLCanvas.setCurrent(canvas, ctx)
+
     :wxGLCanvas.connect(canvas, :key_down, callback: &Input.handler/2)
     :wxGLCanvas.connect(canvas, :key_up, callback: &Input.handler/2)
     :wxGLCanvas.connect(canvas, :motion, callback: &Input.handler/2)
+    Glory.Input.init()
 
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
@@ -87,7 +94,9 @@ defmodule Glory.Window do
        cube_vao: cube_vao,
        texture1: texture1,
        texture2: texture2,
-       cubes: cube_positions()
+       cubes: cube_positions(),
+       keys: MapSet.new(),
+       camera: Camera.new()
      }}
   end
 
@@ -221,10 +230,31 @@ defmodule Glory.Window do
     {:noreply, state}
   end
 
+  @impl :wx_object
+  def handle_cast({:key_down, key_code}, %{keys: keys} = state) do
+    keys = MapSet.put(keys, key_code)
+    state = Map.put(state, :keys, keys)
+    {:noreply, state}
+  end
+
+  @impl :wx_object
+  def handle_cast({:key_up, key_code}, %{keys: keys} = state) do
+    keys = MapSet.delete(keys, key_code)
+    state = Map.put(state, :keys, keys)
+    {:noreply, state}
+  end
+
+  @impl :wx_object
+  def handle_cast(request, state) do
+    IO.inspect(request, label: "casted")
+    {:noreply, state}
+  end
+
   defp render(%{canvas: canvas} = state) do
     state =
       state
       |> update_frame_counter()
+      |> handle_input()
       |> draw()
 
     :wxGLCanvas.swapBuffers(canvas)
@@ -232,7 +262,12 @@ defmodule Glory.Window do
     state
   end
 
-  defp draw(%{frame: frame, shader_program: shader_program, cubes: cubes} = state) do
+  defp handle_input(%{camera: camera, keys: keys} = state) do
+    camera = Camera.handle_input(camera, keys)
+    Map.put(state, :camera, camera)
+  end
+
+  defp draw(%{frame: frame, shader_program: shader_program, cubes: cubes, camera: camera} = state) do
     :gl.enable(:gl_const.gl_depth_test())
     :gl.depthFunc(:gl_const.gl_less())
 
@@ -244,7 +279,7 @@ defmodule Glory.Window do
     :gl.activeTexture(:gl_const.gl_texture1())
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
 
-    view = Graphmath.Mat44.make_translate(0.0, 0.0, -3.0)
+    view = Camera.view(camera)
     projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
 
     shader_program
@@ -265,13 +300,13 @@ defmodule Glory.Window do
     cubes
     |> Enum.with_index()
     |> Enum.each(fn {{x, y, z}, i} ->
-      degrees = (state.start_time - now()) * 0.1 * (i + 1)
+      degrees = (state.start_time - now()) * 0.01 * (i + 1)
       rads = radians(degrees)
 
       model =
-        Graphmath.Mat44.make_translate(x, y, z)
-        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_x(rads))
-        |> Graphmath.Mat44.multiply(Graphmath.Mat44.make_rotate_z(rads))
+        Mat44.make_translate(x, y, z)
+        |> Mat44.multiply(Mat44.make_rotate_x(rads))
+        |> Mat44.multiply(Mat44.make_rotate_z(rads))
 
       shader_program
       |> Shader.set(~c"model", model)
