@@ -1,13 +1,14 @@
 defmodule Glory.Window do
   alias Glory.Camera
+  alias Glory.Cube
   alias Glory.Input
+  alias Glory.Math
   alias Glory.Shader
   alias Glory.Texture
   alias Graphmath.Mat44
 
   import WxRecords
   import Bitwise
-  import Glory.Math
   require Logger
 
   @behaviour :wx_object
@@ -25,6 +26,7 @@ defmodule Glory.Window do
 
   @width 1200
   @height 800
+  @aspect @width / @height * 1.0
 
   @impl :wx_object
   def init(_) do
@@ -55,7 +57,7 @@ defmodule Glory.Window do
     :wxGLCanvas.connect(canvas, :key_down, callback: &Input.handler/2)
     :wxGLCanvas.connect(canvas, :key_up, callback: &Input.handler/2)
     :wxGLCanvas.connect(canvas, :motion, callback: &Input.handler/2)
-    Glory.Input.init()
+    Input.init()
 
     max_attribs = :gl.getIntegerv(:gl_const.gl_max_vertex_attribs()) |> inspect()
 
@@ -66,7 +68,7 @@ defmodule Glory.Window do
 
     Logger.debug("Created Shader program")
     frame_counter = :counters.new(2, [:atomics])
-    cube_vao = bind_shape(cube_vertices())
+    cube_vao = Cube.bind()
     Logger.debug("Bound shape")
     texture1 = Texture.load_texture(@container_path)
     texture2 = Texture.load_texture(@awesome_path)
@@ -94,114 +96,11 @@ defmodule Glory.Window do
        cube_vao: cube_vao,
        texture1: texture1,
        texture2: texture2,
-       cubes: cube_positions(),
+       cubes: Cube.positions(),
        keys: MapSet.new(),
-       camera: Camera.new()
+       camera: Camera.new(),
+       projection: Glory.Math.perspective(45.0, @aspect, 0.1, 100.0)
      }}
-  end
-
-  defp now do
-    System.monotonic_time(:millisecond)
-  end
-
-  defp cube_positions do
-    [
-      {0.0, 0.0, 0.0},
-      {2.0, 5.0, -15.0},
-      {-1.5, -2.2, -2.5},
-      {-3.8, -2.0, -12.3},
-      {2.4, -0.4, -3.5},
-      {-1.7, 3.0, -7.5},
-      {1.3, -2.0, -2.5},
-      {1.5, 2.0, -2.5},
-      {1.5, 0.2, -1.5},
-      {-1.3, 1.0, -1.5}
-    ]
-  end
-
-  def bind_shape(vertices) do
-    [vertex_array] = :gl.genVertexArrays(1)
-    [vertex_buffer] = :gl.genBuffers(1)
-
-    :gl.bindVertexArray(vertex_array)
-
-    :gl.bindBuffer(:gl_const.gl_array_buffer(), vertex_buffer)
-
-    :gl.bufferData(
-      :gl_const.gl_array_buffer(),
-      byte_size(vertices),
-      vertices,
-      :gl_const.gl_static_draw()
-    )
-
-    :gl.vertexAttribPointer(
-      0,
-      3,
-      :gl_const.gl_float(),
-      :gl_const.gl_false(),
-      5 * byte_size(<<0.0::float-native-size(32)>>),
-      0
-    )
-
-    :gl.enableVertexAttribArray(0)
-
-    :gl.vertexAttribPointer(
-      1,
-      2,
-      :gl_const.gl_float(),
-      :gl_const.gl_false(),
-      5 * byte_size(<<0.0::float-native-size(32)>>),
-      3 * byte_size(<<0.0::float-native-size(32)>>)
-    )
-
-    :gl.enableVertexAttribArray(1)
-
-    vertex_array
-  end
-
-  @cube_vertices [
-                   [-0.5, -0.5, -0.5, 0.0, 0.0],
-                   [0.5, -0.5, -0.5, 1.0, 0.0],
-                   [0.5, 0.5, -0.5, 1.0, 1.0],
-                   [0.5, 0.5, -0.5, 1.0, 1.0],
-                   [-0.5, 0.5, -0.5, 0.0, 1.0],
-                   [-0.5, -0.5, -0.5, 0.0, 0.0],
-                   [-0.5, -0.5, 0.5, 0.0, 0.0],
-                   [0.5, -0.5, 0.5, 1.0, 0.0],
-                   [0.5, 0.5, 0.5, 1.0, 1.0],
-                   [0.5, 0.5, 0.5, 1.0, 1.0],
-                   [-0.5, 0.5, 0.5, 0.0, 1.0],
-                   [-0.5, -0.5, 0.5, 0.0, 0.0],
-                   [-0.5, 0.5, 0.5, 1.0, 0.0],
-                   [-0.5, 0.5, -0.5, 1.0, 1.0],
-                   [-0.5, -0.5, -0.5, 0.0, 1.0],
-                   [-0.5, -0.5, -0.5, 0.0, 1.0],
-                   [-0.5, -0.5, 0.5, 0.0, 0.0],
-                   [-0.5, 0.5, 0.5, 1.0, 0.0],
-                   [0.5, 0.5, 0.5, 1.0, 0.0],
-                   [0.5, 0.5, -0.5, 1.0, 1.0],
-                   [0.5, -0.5, -0.5, 0.0, 1.0],
-                   [0.5, -0.5, -0.5, 0.0, 1.0],
-                   [0.5, -0.5, 0.5, 0.0, 0.0],
-                   [0.5, 0.5, 0.5, 1.0, 0.0],
-                   [-0.5, -0.5, -0.5, 0.0, 1.0],
-                   [0.5, -0.5, -0.5, 1.0, 1.0],
-                   [0.5, -0.5, 0.5, 1.0, 0.0],
-                   [0.5, -0.5, 0.5, 1.0, 0.0],
-                   [-0.5, -0.5, 0.5, 0.0, 0.0],
-                   [-0.5, -0.5, -0.5, 0.0, 1.0],
-                   [-0.5, 0.5, -0.5, 0.0, 1.0],
-                   [0.5, 0.5, -0.5, 1.0, 1.0],
-                   [0.5, 0.5, 0.5, 1.0, 0.0],
-                   [0.5, 0.5, 0.5, 1.0, 0.0],
-                   [-0.5, 0.5, 0.5, 0.0, 0.0],
-                   [-0.5, 0.5, -0.5, 0.0, 1.0]
-                 ]
-                 |> List.flatten()
-                 |> Enum.reduce(<<>>, fn el, acc -> <<acc::binary, el::float-native-size(32)>> end)
-
-  def cube_vertices do
-    @cube_vertices
   end
 
   @impl :wx_object
@@ -223,8 +122,8 @@ defmodule Glory.Window do
 
   @impl :wx_object
   def handle_info(:update, state) do
-    # send(self(), :update)
-    Process.send_after(self(), :update, 10)
+    send(self(), :update)
+    # Process.send_after(self(), :update, 10)
     state = render(state)
 
     {:noreply, state}
@@ -257,6 +156,8 @@ defmodule Glory.Window do
       |> handle_input()
       |> draw()
 
+    Logger.debug("Frame time #{now() - state.last_frame_time}ms")
+
     :wxGLCanvas.swapBuffers(canvas)
 
     state
@@ -264,10 +165,19 @@ defmodule Glory.Window do
 
   defp handle_input(%{camera: camera, keys: keys} = state) do
     camera = Camera.handle_input(camera, keys)
-    Map.put(state, :camera, camera)
+    %{state | camera: camera}
   end
 
-  defp draw(%{frame: frame, shader_program: shader_program, cubes: cubes, camera: camera} = state) do
+  defp draw(
+         %{
+           frame: frame,
+           shader_program: shader_program,
+           cubes: cubes,
+           camera: camera,
+           projection: projection,
+           cube_vao: cube_vao
+         } = state
+       ) do
     :gl.enable(:gl_const.gl_depth_test())
     :gl.depthFunc(:gl_const.gl_less())
 
@@ -280,38 +190,25 @@ defmodule Glory.Window do
     :gl.bindTexture(:gl_const.gl_texture_2d(), state.texture2)
 
     view = Camera.view(camera)
-    projection = perspective(45.0, 800.0 / 600.0, 0.1, 100.0)
 
     shader_program
     |> Shader.set(~c"view", view)
     |> Shader.set(~c"projection", projection)
 
-    #    glBindVertexArray(VAO);
-    # for(unsigned int i = 0; i < 10; i++)
-    # {
-    #    glm::mat4 model = glm::mat4(1.0f);
-    #    model = glm::translate(model, cubePositions[i]);
-    #    float angle = 20.0f * i; 
-    #    model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-    #    ourShader.setMat4("model", model);
-    #
-    #    glDrawArrays(GL_TRIANGLES, 0, 36);
-    # }
     cubes
     |> Enum.with_index()
     |> Enum.each(fn {{x, y, z}, i} ->
       degrees = (state.start_time - now()) * 0.01 * (i + 1)
-      rads = radians(degrees)
+      rads = Math.radians(degrees)
 
       model =
         Mat44.make_translate(x, y, z)
         |> Mat44.multiply(Mat44.make_rotate_x(rads))
         |> Mat44.multiply(Mat44.make_rotate_z(rads))
 
-      shader_program
-      |> Shader.set(~c"model", model)
+      Shader.set(shader_program, ~c"model", model)
 
-      :gl.bindVertexArray(state.cube_vao)
+      :gl.bindVertexArray(cube_vao)
       :gl.drawArrays(:gl_const.gl_triangles(), 0, 36)
     end)
 
@@ -337,10 +234,10 @@ defmodule Glory.Window do
       frames = :counters.get(frame_counter, 1)
       fps = (frames / since_last_sample * 1_000) |> round()
       :counters.put(frame_counter, 1, 0)
-      Map.merge(state, %{fps: fps, last_sample_time: now, last_frame_time: now})
+      %{state | fps: fps, last_sample_time: now, last_frame_time: now}
     else
       :counters.add(frame_counter, 1, 1)
-      Map.put(state, :last_frame_time, now)
+      %{state | last_frame_time: now}
     end
   end
 
@@ -350,5 +247,9 @@ defmodule Glory.Window do
       start: {__MODULE__, :start_link, [opts]},
       restart: :permanent
     }
+  end
+
+  defp now do
+    System.monotonic_time(:millisecond)
   end
 end

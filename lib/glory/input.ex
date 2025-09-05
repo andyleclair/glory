@@ -3,6 +3,7 @@ defmodule Glory.Input do
   import WxRecords
 
   def init() do
+    # TODO: just how stupid is this really
     :persistent_term.put({__MODULE__, :mouse_x}, 0)
     :persistent_term.put({__MODULE__, :mouse_y}, 0)
   end

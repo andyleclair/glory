@@ -24,7 +24,8 @@ defmodule Glory.MixProject do
     [
       {:image, "~> 0.37"},
       {:graphmath, "~> 2.0"},
-      {:typedstruct, "~> 0.5"}
+      {:typedstruct, "~> 0.5"},
+      {:benchee, "~> 1.0"}
     ]
   end
 end

@@ -2,8 +2,11 @@ defmodule Glory.Math do
   alias Graphmath.Vec3
   alias Graphmath.Mat44
 
+  @rad_per_deg :math.pi() / 180.0
+
+  @compile {:inline, radians: 1}
   def radians(degrees) when is_number(degrees) do
-    degrees * (:math.pi() / 180.0)
+    degrees * @rad_per_deg
   end
 
   @spec perspective(fov :: float(), aspect :: float(), near :: float(), far :: float()) ::
@@ -41,23 +44,6 @@ defmodule Glory.Math do
       0.0
     }
   end
-
-  # def perspective(fov, aspect, near, far) do
-  #  f = 1.0 / :math.tan(fov / 2)
-  #  nf = 1 / (near - far)
-
-  #  {
-  #    {f / aspect, 0.0, 0.0, 0.0},
-  #    {0.0, f, 0.0, 0.0},
-  #    {0.0, 0.0, (far + near) * nf, -1.0},
-  #    {0.0, 0.0, 2 * far * near * nf, 0.0}
-  #  }
-  #  |> flatten()
-  # end
-
-  # def flatten({{a0, a1, a2, a3}, {b0, b1, b2, b3}, {c0, c1, c2, c3}, {d0, d1, d2, d3}}) do
-  #  {a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3}
-  # end
 
   def ortho(left, right, bottom, top, near, far) do
     {
